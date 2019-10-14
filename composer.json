@@ -1,0 +1,22 @@
+{
+  "name": "codexten/yii-urlmanager-rule-encryptor",
+  "description": "Yii url encriptor",
+  "require": {
+    "codexten/yii-web": "~2.0.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "codexten\\yii\\web\\UrlManager\\rules\\encryptor\\": "src"
+    }
+  },
+  "sextra": {
+    "branch-alias": {
+      "dev-master": "2.0.x-dev"
+    },
+    "config-plugin": {
+      "queue": [
+        "config/queue.php"
+      ]
+    }
+  }
+}
