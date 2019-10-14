@@ -14,8 +14,8 @@
       "dev-master": "2.0.x-dev"
     },
     "config-plugin": {
-      "queue": [
-        "config/queue.php"
+      "urlManagerRuleEncryptor": [
+        "config/urlManagerRuleEncryptor.php"
       ]
     }
   }
