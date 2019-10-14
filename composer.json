@@ -1,5 +1,5 @@
 {
-  "name": "codexten/yii-urlmanager-rule-encryptor",
+  "name": "codexten/yii-url-rule-encryptor",
   "description": "Yii url encriptor",
   "require": {
     "codexten/yii-web": "~2.0.0"
