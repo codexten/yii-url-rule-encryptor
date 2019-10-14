@@ -6,7 +6,7 @@
   },
   "autoload": {
     "psr-4": {
-      "codexten\\yii\\web\\UrlManager\\rules\\encryptor\\": "src"
+      "codexten\\yii\\web\\url\\rules\\encryptor\\": "src"
     }
   },
   "extra": {
@@ -14,8 +14,8 @@
       "dev-master": "2.0.x-dev"
     },
     "config-plugin": {
-      "urlManagerRuleEncryptor": [
-        "config/urlManagerRuleEncryptor.php"
+      "urlRuleEncryptor": [
+        "config/urlRuleEncryptor.php"
       ]
     }
   }
