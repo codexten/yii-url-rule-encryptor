@@ -3,60 +3,151 @@
 namespace codexten\yii\web\url\rules\encryptor;
 
 use Yii;
+use yii\base\InvalidConfigException;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Json;
+use yii\web\UrlNormalizer;
 use yii\web\UrlRule;
 
+/**
+ * EncodeUrlRule enables the creation of urls with parameters that can contain array of data.
+ * This is achieved by flatenning the array into a json string and then encoded and added as query string.
+ * ```
+ * Then test the followind scenarios:
+ * ```php
+ * // /site/url-test/?id=123&key1=value1&enc=a2V5Mj0lMjJ2YWx1ZTIlMjImdXNlcklkPTQ1NiZwYWdlPTI%253D
+ * echo Url::to([
+ *        '/site/url-test',
+ *        'id' => 123,
+ *        'key1' => 'value1',
+ *        'userId' => 456,
+ *        'page' => 2,
+ *        'enc' => [
+ *            'key2' => 'value2'
+ *        ],
+ *    ]);
+ * ```
+ * In your controller action you can get the query parameters as follows
+ * ```php
+ * public function actionUrlTest($id, $userId, $key2)
+ * {
+ *     var_dump($id); // 123
+ *     var_dump($userId); // 456
+ *     var_dump($key2); // value2
+ *     var_dump(Yii::$app->request->get('key1')); // value1
+ *     var_dump(Yii::$app->request->get('page')); // 2
+ *     var_dump(Yii::$app->request->get()); // contains all get query parameters including `enc`
+ * }
+ * ```
+ *
+ * @author Yuv Joodhisty <locustv2@gmail.com>
+ * @since 1.0
+ */
 class EncriptorUrlRule extends UrlRule
 {
-    public function init()
-    {
-        if ($this->name === null) {
-            $this->name = __CLASS__;
-        }
-    }
+    /**
+     * @var string the parameter key to use in urls
+     */
+    public $paramName = '_pi';
 
-    public function createUrl($manager, $route, $params)
-    {
-        $args = '?';
-        $idx = 0;
-        foreach ($params as $num => $val) {
-            if ($num == 'id') {
-                $val = base64_encode($val);
-            }
-            $args .= $num.'='.$val;
-            $idx++;
-            if ($idx != count($params)) {
-                $args .= '&';
-            }
-        }
-        $suffix = Yii::$app->urlManager->suffix;
-        if ($args == '?') {
-            $args = '';
-        }
-        return $route.$suffix.$args;
-        return false;  // this rule does not apply
-    }
+    /**
+     * @var array the parameters to be encoded automatically when creating urls
+     */
+    public $autoEncodeParams = [];
 
+//    public function init()
+//    {
+//
+//        if ($this->name === null) {
+//            $this->name = __CLASS__;
+//        }
+//        parent::init();
+//    }
+
+    /**
+     * @inheritdoc
+     */
     public function parseRequest($manager, $request)
     {
-        $pathInfo = $request->getPathInfo();
-        $url = $request->getUrl();
-        $queryString = parse_url($url);
-        if (isset($queryString['query'])) {
-            $queryString = $queryString['query'];
-            $args = [];
-            parse_str($queryString, $args);
-            $params = [];
-            foreach ($args as $num => $val) {
-                if ($num == 'id') {
-                    $val = base64_decode($val);
+        if ($parsedRequest = parent::parseRequest($manager, $request)) {
+            list ($route, $params) = $parsedRequest;
+
+            if ($pi = $request->get($this->paramName)) {
+                $pi = $this->urlDecode($pi);
+
+                foreach ($pi as $key => &$value) {
+                    $value = Json::decode($value);
                 }
-                $params[$num] = $val;
+
+                $params = ArrayHelper::merge($params, $pi);
             }
-            $suffix = Yii::$app->urlManager->suffix;
-            $route = str_replace($suffix, '', $pathInfo);
+
             return [$route, $params];
         }
-        return false;  // this rule does not apply
+
+        return false;
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function createUrl($manager, $route, $params)
+    {
+        if (isset($params[$this->paramName]) && !is_array($params[$this->paramName])) {
+            $params[$this->paramName] = $this->urlDecode($params[$this->paramName]);
+
+            foreach ($params[$this->paramName] as $key => &$value) {
+                $value = Json::decode($value);
+            }
+        }
+
+        foreach ($params as $key => $param) {
+            if (in_array($key, $this->autoEncodeParams) && !is_null($param)) {
+                
+                $params[$this->paramName][$key] = $param;
+              
+                ArrayHelper::remove($params, $key);
+            }
+        }
+
+        if (isset($params[$this->paramName]) && is_array($params[$this->paramName])) {
+            foreach ($params[$this->paramName] as $key => &$value) {
+                $value = Json::encode($value);
+            }
+
+            $params[$this->paramName] = $this->urlEncode($params[$this->paramName]);
+        }
+
+        return parent::createUrl($manager, $route, $params);
+    }
+
+    /**
+     * Encode an array of data to be used in urls
+     * @param  array  $data  the data to be encoded
+     * @return string the encoded data
+     */
+    private function urlEncode(array $data)
+    {
+        $query = http_build_query($data);
+        $query = base64_encode($query);
+        $query = rawurlencode($query);
+
+        return $query;
+    }
+
+    /**
+     * Decode a string of data from url query
+     * @param  string  $query  the query string to be decoded
+     * @return array the decoded query
+     */
+    private function urlDecode($query)
+    {
+        $query = rawurldecode($query);
+        $query = base64_decode($query);
+
+        $data = [];
+        parse_str($query, $data);
+
+        return $data;
+    }
 }
